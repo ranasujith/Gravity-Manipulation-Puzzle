@@ -2,17 +2,17 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour
 {
-    [Header("Target")]
+    [Header("TARGET")]
     public Transform target;
 
-    [Header("Settings")]
+    [Header("SETTINGS")]
     public Vector3 offset = new Vector3(0f, 3f, -6f);
 
     public float mouseSensitivity = 120f;
 
     public float smoothSpeed = 10f;
 
-    [Header("Gravity Reference")]
+    [Header("GRAVITY REFERENCE")]
     public PlayerController playerController;
 
     private float yaw;
@@ -35,9 +35,6 @@ public class CameraController : MonoBehaviour
         FollowTarget();
     }
 
-    // =========================================
-    // CAMERA ROTATION
-    // =========================================
     private void RotateCamera()
     {
         float mouseX =
@@ -57,16 +54,11 @@ public class CameraController : MonoBehaviour
         pitch = Mathf.Clamp(pitch, -80f, 80f);
     }
 
-    // =========================================
-    // CAMERA FOLLOW
-    // =========================================
     private void FollowTarget()
     {
-        // Current gravity up direction
         Vector3 gravityUp =
             -Physics.gravity.normalized;
 
-        // Camera rotation
         Quaternion rotation =
             Quaternion.LookRotation(
                 target.forward,
@@ -75,19 +67,16 @@ public class CameraController : MonoBehaviour
 
         rotation *= Quaternion.Euler(pitch, yaw, 0f);
 
-        // Desired position
         Vector3 desiredPosition =
             target.position +
             rotation * offset;
 
-        // Smooth follow
         transform.position = Vector3.Lerp(
             transform.position,
             desiredPosition,
             smoothSpeed * Time.deltaTime
         );
 
-        // Look at player
         transform.rotation = Quaternion.LookRotation(
             target.position - transform.position,
             gravityUp

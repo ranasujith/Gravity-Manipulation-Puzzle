@@ -3,20 +3,23 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement")]
+    [Header("MOVEMENT")]
     public float moveSpeed = 5f;
     public float rotationSpeed = 10f;
     public float jumpForce = 7f;
 
-    [Header("Gravity")]
+    [Header("GRAVITY")]
     public float gravityForce = 9.81f;
 
-    [Header("Ground Check")]
+    [Header("GROUND CHECK")]
     public Transform groundCheck;
     public float groundDistance = 0.3f;
     public LayerMask groundLayer;
 
-    [Header("References")]
+    [Header("HOLOGRAM")]
+    public Transform hologram;
+
+    [Header("REFERENCES")]
     public Animator animator;
 
     private Rigidbody rb;
@@ -33,11 +36,8 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-        // Freeze unwanted physics rotation
         rb.constraints = RigidbodyConstraints.FreezeRotation;
 
-        // Set default gravity
         Physics.gravity = gravityDirection * gravityForce;
     }
 
@@ -61,21 +61,14 @@ public class PlayerController : MonoBehaviour
         CheckFallDeath();
     }
 
-    // =========================================
-    // INPUT
-    // =========================================
     private void HandleInput()
     {
         horizontal = Input.GetAxisRaw("Horizontal");
         vertical = Input.GetAxisRaw("Vertical");
     }
 
-    // =========================================
-    // MOVEMENT
-    // =========================================
     private void MovePlayer()
     {
-        // Camera forward relative to gravity
         Vector3 forward =
             Vector3.ProjectOnPlane(
                 Camera.main.transform.forward,
@@ -88,26 +81,22 @@ public class PlayerController : MonoBehaviour
                 gravityDirection
             ).normalized;
 
-        // Movement direction
         Vector3 moveDirection =
             forward * vertical +
             right * horizontal;
 
         moveDirection.Normalize();
 
-        // Preserve gravity velocity
         Vector3 gravityVelocity =
             Vector3.Project(
                 rb.linearVelocity,
                 gravityDirection
             );
 
-        // Apply movement
         rb.linearVelocity =
             moveDirection * moveSpeed +
             gravityVelocity;
 
-        // Rotate player toward movement direction
         if (moveDirection.magnitude > 0.1f)
         {
             Quaternion targetRotation =
@@ -124,9 +113,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // =========================================
-    // JUMP
-    // =========================================
     private void HandleJump()
     {
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
@@ -140,29 +126,18 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // =========================================
-    // GRAVITY MANIPULATION
-    // =========================================
     private void HandleGravityChange()
     {
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
             SetGravity(Vector3.up);
+            UpdateHologram(Vector3.up);
         }
 
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
             SetGravity(Vector3.down);
-        }
-
-        if (Input.GetKeyDown(KeyCode.LeftArrow))
-        {
-            SetGravity(Vector3.left);
-        }
-
-        if (Input.GetKeyDown(KeyCode.RightArrow))
-        {
-            SetGravity(Vector3.right);
+            UpdateHologram(Vector3.down);
         }
     }
 
@@ -172,7 +147,6 @@ public class PlayerController : MonoBehaviour
 
         Physics.gravity = gravityDirection * gravityForce;
 
-        // Rotate player to align with new gravity
         Quaternion targetRotation =
             Quaternion.FromToRotation(
                 transform.up,
@@ -182,9 +156,6 @@ public class PlayerController : MonoBehaviour
         transform.rotation = targetRotation;
     }
 
-    // =========================================
-    // GROUND CHECK
-    // =========================================
     private void CheckGround()
     {
         isGrounded = Physics.CheckSphere(
@@ -194,9 +165,6 @@ public class PlayerController : MonoBehaviour
         );
     }
 
-    // =========================================
-    // ANIMATOR
-    // =========================================
     private void UpdateAnimator()
     {
         bool isRunning =
@@ -214,21 +182,17 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("IsFalling", isFalling);
     }
 
-    // =========================================
-    // FALL DEATH
-    // =========================================
     private void CheckFallDeath()
     {
         if (!isGrounded)
         {
             airTime += Time.fixedDeltaTime;
 
-            // Player stayed in air too long
             if (airTime >= 3f)
             {
                 Debug.Log("Game Over");
 
-                gameObject.SetActive(false);
+                //gameObject.SetActive(false);
             }
         }
         else
@@ -237,9 +201,50 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    // =========================================
-    // DEBUG GIZMOS
-    // =========================================
+    private void UpdateHologram(Vector3 gravityDir)
+    {
+        RaycastHit hit;
+
+        Vector3 rayOrigin =
+            transform.position;
+
+        if (Physics.Raycast(
+            rayOrigin,
+            gravityDir,
+            out hit,
+            10f))
+        {
+            hologram.gameObject.SetActive(true);
+
+            hologram.position =
+                hit.point + (-gravityDir * 1f);
+
+            hologram.rotation =
+                Quaternion.LookRotation(
+                    transform.forward,
+                    -gravityDir
+                );
+
+            Animator holoAnimator =
+                hologram.GetComponent<Animator>();
+
+            holoAnimator.SetBool(
+                "IsRunning",
+                animator.GetBool("IsRunning")
+            );
+
+            holoAnimator.SetBool(
+                "IsGrounded",
+                true
+            );
+
+            holoAnimator.SetBool(
+                "IsFalling",
+                false
+            );
+        }
+    }
+
     private void OnDrawGizmosSelected()
     {
         if (groundCheck == null)
