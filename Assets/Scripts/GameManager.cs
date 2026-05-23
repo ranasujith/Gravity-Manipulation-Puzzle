@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
@@ -33,7 +34,7 @@ public class GameManager : MonoBehaviour
 
         HandleTimer();
 
-        //UpdateUI();
+        UpdateUI();
     }
 
     private void HandleTimer()
@@ -104,5 +105,11 @@ public class GameManager : MonoBehaviour
         SceneManager.LoadScene(
             SceneManager.GetActiveScene().buildIndex
         );
+    }
+
+    public void HomeScene()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene("HomeScene");
     }
 }

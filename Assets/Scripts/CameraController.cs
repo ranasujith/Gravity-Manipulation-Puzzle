@@ -6,36 +6,51 @@ public class CameraController : MonoBehaviour
     public Transform target;
 
     [Header("SETTINGS")]
-    public Vector3 offset = new Vector3(0f, 3f, -6f);
+    public float distance = 6f;
+
+    public float height = 2f;
 
     public float mouseSensitivity = 120f;
 
-    public float smoothSpeed = 10f;
+    public float smoothSpeed = 8f;
 
-    [Header("GRAVITY REFERENCE")]
-    public PlayerController playerController;
+    public float gravityRotateSpeed = 4f;
+
+    [Header("PITCH LIMIT")]
+    public float minPitch = -40f;
+
+    public float maxPitch = 80f;
 
     private float yaw;
     private float pitch;
 
+    private Quaternion gravityAlignment =
+        Quaternion.identity;
+
+
     private void Start()
     {
-        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.lockState =
+            CursorLockMode.Locked;
 
         Cursor.visible = false;
+
+        yaw = transform.eulerAngles.y;
     }
+
 
     private void LateUpdate()
     {
         if (target == null)
             return;
 
-        RotateCamera();
+        HandleMouseInput();
 
         FollowTarget();
     }
 
-    private void RotateCamera()
+
+    private void HandleMouseInput()
     {
         float mouseX =
             Input.GetAxis("Mouse X") *
@@ -51,35 +66,69 @@ public class CameraController : MonoBehaviour
 
         pitch -= mouseY;
 
-        pitch = Mathf.Clamp(pitch, -80f, 80f);
+        pitch = Mathf.Clamp(
+            pitch,
+            minPitch,
+            maxPitch
+        );
     }
+
 
     private void FollowTarget()
     {
         Vector3 gravityUp =
             -Physics.gravity.normalized;
 
-        Quaternion rotation =
-            Quaternion.LookRotation(
-                target.forward,
+        Quaternion targetGravityAlignment =
+            Quaternion.FromToRotation(
+                Vector3.up,
                 gravityUp
             );
 
-        rotation *= Quaternion.Euler(pitch, yaw, 0f);
+        gravityAlignment =
+            Quaternion.Slerp(
+                gravityAlignment,
+                targetGravityAlignment,
+                gravityRotateSpeed *
+                Time.deltaTime
+            );
+
+        Quaternion cameraRotation =
+            Quaternion.Euler(
+                pitch,
+                yaw,
+                0f
+            );
+
+        Quaternion finalRotation =
+            gravityAlignment *
+            cameraRotation;
+
+        Vector3 offset =
+            finalRotation *
+            new Vector3(
+                0f,
+                height,
+                -distance
+            );
 
         Vector3 desiredPosition =
-            target.position +
-            rotation * offset;
+            target.position + offset;
 
-        transform.position = Vector3.Lerp(
-            transform.position,
-            desiredPosition,
-            smoothSpeed * Time.deltaTime
-        );
+        transform.position =
+            Vector3.Lerp(
+                transform.position,
+                desiredPosition,
+                smoothSpeed *
+                Time.deltaTime
+            );
 
-        transform.rotation = Quaternion.LookRotation(
-            target.position - transform.position,
-            gravityUp
-        );
+        transform.rotation =
+            Quaternion.Slerp(
+                transform.rotation,
+                finalRotation,
+                smoothSpeed *
+                Time.deltaTime
+            );
     }
 }

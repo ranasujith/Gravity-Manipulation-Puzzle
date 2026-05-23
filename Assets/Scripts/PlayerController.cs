@@ -1,15 +1,17 @@
+using System.Collections;
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
     [Header("MOVEMENT")]
     public float moveSpeed = 5f;
-    public float rotationSpeed = 10f;
+    public float rotationSpeed = 6f;
     public float jumpForce = 7f;
 
     [Header("GRAVITY")]
     public float gravityForce = 9.81f;
+    public float gravityTransitionForce = 8f;
+    public float gravityCooldown = 0.3f;
 
     [Header("GROUND CHECK")]
     public Transform groundCheck;
@@ -33,13 +35,23 @@ public class PlayerController : MonoBehaviour
 
     private float airTime;
 
+    private bool canChangeGravity = true;
+
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.FreezeRotation;
 
-        Physics.gravity = gravityDirection * gravityForce;
+        rb.constraints =
+            RigidbodyConstraints.FreezeRotation;
+
+        rb.interpolation =
+            RigidbodyInterpolation.Interpolate;
+
+        Physics.gravity =
+            gravityDirection * gravityForce;
     }
+
 
     private void Update()
     {
@@ -52,6 +64,7 @@ public class PlayerController : MonoBehaviour
         UpdateAnimator();
     }
 
+
     private void FixedUpdate()
     {
         CheckGround();
@@ -61,11 +74,16 @@ public class PlayerController : MonoBehaviour
         CheckFallDeath();
     }
 
+
     private void HandleInput()
     {
-        horizontal = Input.GetAxisRaw("Horizontal");
-        vertical = Input.GetAxisRaw("Vertical");
+        horizontal =
+            Input.GetAxisRaw("Horizontal");
+
+        vertical =
+            Input.GetAxisRaw("Vertical");
     }
+
 
     private void MovePlayer()
     {
@@ -105,17 +123,20 @@ public class PlayerController : MonoBehaviour
                     -gravityDirection
                 );
 
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
+            transform.rotation =
+                Quaternion.Slerp(
+                    transform.rotation,
+                    targetRotation,
+                    rotationSpeed * Time.deltaTime
+                );
         }
     }
 
+
     private void HandleJump()
     {
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        if (Input.GetKeyDown(KeyCode.Space)
+            && isGrounded)
         {
             rb.AddForce(
                 -gravityDirection * jumpForce,
@@ -126,26 +147,75 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+
     private void HandleGravityChange()
     {
+        if (!canChangeGravity)
+            return;
+
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
-            SetGravity(Vector3.up);
-            UpdateHologram(Vector3.up);
+            ChangeGravity(Vector3.up);
         }
 
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            SetGravity(Vector3.down);
-            UpdateHologram(Vector3.down);
+            ChangeGravity(Vector3.down);
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            ChangeGravity(Vector3.left);
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            ChangeGravity(Vector3.right);
         }
     }
 
+
+    private void ChangeGravity(Vector3 direction)
+    {
+        canChangeGravity = false;
+
+        SetGravity(direction);
+
+        UpdateHologram(direction);
+
+        Invoke(
+            nameof(ResetGravityCooldown),
+            gravityCooldown
+        );
+    }
+
+    private void ResetGravityCooldown()
+    {
+        canChangeGravity = true;
+    }
+
+
     private void SetGravity(Vector3 direction)
     {
-        gravityDirection = direction.normalized;
+        gravityDirection =
+            direction.normalized;
 
-        Physics.gravity = gravityDirection * gravityForce;
+        Physics.gravity =
+            gravityDirection * gravityForce;
+
+        rb.linearVelocity = Vector3.zero;
+
+        rb.AddForce(
+            -transform.up *
+            gravityTransitionForce,
+            ForceMode.Impulse
+        );
+
+        rb.AddForce(
+            gravityDirection *
+            gravityForce,
+            ForceMode.Impulse
+        );
 
         Quaternion targetRotation =
             Quaternion.FromToRotation(
@@ -153,17 +223,52 @@ public class PlayerController : MonoBehaviour
                 -gravityDirection
             ) * transform.rotation;
 
-        transform.rotation = targetRotation;
+        StopAllCoroutines();
+
+        StartCoroutine(
+            SmoothRotate(targetRotation)
+        );
+
+        isGrounded = false;
     }
+
+
+    private IEnumerator SmoothRotate(
+        Quaternion targetRotation)
+    {
+        Quaternion startRotation =
+            transform.rotation;
+
+        float time = 0f;
+
+        while (time < 1f)
+        {
+            time +=
+                Time.deltaTime *
+                rotationSpeed;
+
+            transform.rotation =
+                Quaternion.Slerp(
+                    startRotation,
+                    targetRotation,
+                    time
+                );
+
+            yield return null;
+        }
+    }
+
 
     private void CheckGround()
     {
-        isGrounded = Physics.CheckSphere(
-            groundCheck.position,
-            groundDistance,
-            groundLayer
-        );
+        isGrounded =
+            Physics.CheckSphere(
+                groundCheck.position,
+                groundDistance,
+                groundLayer
+            );
     }
+
 
     private void UpdateAnimator()
     {
@@ -173,26 +278,40 @@ public class PlayerController : MonoBehaviour
 
         bool isFalling =
             !isGrounded &&
-            rb.linearVelocity.y < -0.1f;
+            Vector3.Dot(
+                rb.linearVelocity,
+                gravityDirection
+            ) > 0.1f;
 
-        animator.SetBool("IsRunning", isRunning);
+        animator.SetBool(
+            "IsRunning",
+            isRunning
+        );
 
-        animator.SetBool("IsGrounded", isGrounded);
+        animator.SetBool(
+            "IsGrounded",
+            isGrounded
+        );
 
-        animator.SetBool("IsFalling", isFalling);
+        animator.SetBool(
+            "IsFalling",
+            isFalling
+        );
     }
+
 
     private void CheckFallDeath()
     {
         if (!isGrounded)
         {
-            airTime += Time.fixedDeltaTime;
+            airTime +=
+                Time.fixedDeltaTime;
 
-            if (airTime >= 3f)
+            if (airTime >= 20f)
             {
-                Debug.Log("Game Over");
+                Debug.Log("GAME OVER");
 
-                //gameObject.SetActive(false);
+                gameObject.SetActive(false);
             }
         }
         else
@@ -201,8 +320,13 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void UpdateHologram(Vector3 gravityDir)
+
+    private void UpdateHologram(
+        Vector3 gravityDir)
     {
+        if (hologram == null)
+            return;
+
         RaycastHit hit;
 
         Vector3 rayOrigin =
@@ -212,12 +336,13 @@ public class PlayerController : MonoBehaviour
             rayOrigin,
             gravityDir,
             out hit,
-            10f))
+            15f))
         {
             hologram.gameObject.SetActive(true);
 
             hologram.position =
-                hit.point + (-gravityDir * 1f);
+                hit.point +
+                (-gravityDir * 1f);
 
             hologram.rotation =
                 Quaternion.LookRotation(
@@ -244,6 +369,7 @@ public class PlayerController : MonoBehaviour
             );
         }
     }
+
 
     private void OnDrawGizmosSelected()
     {
