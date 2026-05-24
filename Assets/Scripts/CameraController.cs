@@ -30,8 +30,6 @@ public class CameraController : MonoBehaviour
 
     private void Start()
     {
-        GameManager.Instance.LockCursor();
-
         yaw = transform.eulerAngles.y;
     }
 

@@ -82,8 +82,6 @@ public class GameManager : MonoBehaviour
             Time.timeScale = 1f;
 
             exitpanel.SetActive(false);
-
-            LockCursor();
         });
         homeButton.onClick.AddListener(HomeScene);
     }
@@ -95,8 +93,6 @@ public class GameManager : MonoBehaviour
         gameStarted = true;
 
         Time.timeScale = 1f;
-
-        LockCursor();
     }
 
     private void Update()
@@ -163,7 +159,7 @@ public class GameManager : MonoBehaviour
         gameEnded = true;
         AudioManager.Instance.PlaySFX(winSFX);
         winPanel.SetActive(true);
-
+        AudioManager.Instance.StopMusic();
         Time.timeScale = 0f;
 
         UnlockCursor();
@@ -177,6 +173,7 @@ public class GameManager : MonoBehaviour
         gameEnded = true;
         AudioManager.Instance.PlaySFX(gameOverSFX);
         gameOverPanel.SetActive(true);
+        AudioManager.Instance.StopMusic();
 
         Time.timeScale = 0f;
 
@@ -187,8 +184,6 @@ public class GameManager : MonoBehaviour
     {
         AudioManager.Instance.PlaySFX(iconClickSFX);
         Time.timeScale = 1f;
-
-        LockCursor();
 
         SceneManager.LoadScene(
             SceneManager.GetActiveScene().buildIndex
@@ -214,13 +209,5 @@ public class GameManager : MonoBehaviour
             CursorLockMode.None;
 
         Cursor.visible = true;
-    }
-
-    public void LockCursor()
-    {
-        Cursor.lockState =
-            CursorLockMode.Locked;
-
-        Cursor.visible = false;
     }
 }
