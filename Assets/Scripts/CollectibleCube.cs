@@ -6,7 +6,7 @@ public class CollectibleCube : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            GameManager.instance.CollectCube();
+            GameManager.Instance.CollectCube();
 
             Destroy(gameObject);
         }

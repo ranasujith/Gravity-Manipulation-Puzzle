@@ -310,7 +310,7 @@ public class PlayerController : MonoBehaviour
             if (airTime >= 20f)
             {
                 Debug.Log("GAME OVER");
-
+                GameManager.Instance.GameOver();
                 gameObject.SetActive(false);
             }
         }
@@ -370,7 +370,26 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if(other.gameObject.CompareTag("Obstacle"))
+        {
+            GameManager.Instance.GameOver();
+        }
 
+        if(other.gameObject.CompareTag("Finish"))
+        {
+            if(GameManager.Instance.HasCollectedAllCubes())
+            {
+                GameManager.Instance.WinGame();
+            }
+
+            else
+            {
+                GameManager.Instance.ShowCollectAllCubesMessage();
+            }
+        }
+    }
     private void OnDrawGizmosSelected()
     {
         if (groundCheck == null)

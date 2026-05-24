@@ -2,16 +2,18 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
-    public static GameManager instance;
+    public static GameManager Instance;
 
     [Header("UI")]
     public TMP_Text timerText;
     public TMP_Text cubeText;
     public GameObject gameOverPanel;
     public GameObject winPanel;
+    public TMP_Text warningText;
 
     [Header("GAME")]
     public int totalCubes = 5;
@@ -22,9 +24,31 @@ public class GameManager : MonoBehaviour
 
     private bool gameEnded;
 
+    [Header("EXIT")]
+    public GameObject exitpanel;
+    public Button exitButton;
+    public Button cancelButton;
+    public Button homeButton;
+
     private void Awake()
     {
-        instance = this;
+        Instance = this;
+    }
+
+    private void Start()
+    {
+        exitButton.onClick.AddListener(() =>
+        {
+            Time.timeScale = 0f;
+            exitpanel.SetActive(true);
+
+        });
+        cancelButton.onClick.AddListener(() => 
+        {
+            Time.timeScale = 0f;
+            exitpanel.SetActive(false);
+        });
+        homeButton.onClick.AddListener(HomeScene);
     }
 
     private void Update()
@@ -71,13 +95,27 @@ public class GameManager : MonoBehaviour
     {
         collectedCubes++;
 
-        if (collectedCubes >= totalCubes)
-        {
-            WinGame();
-        }
+    }
+    public bool HasCollectedAllCubes()
+    {
+        return collectedCubes >= totalCubes;
+    }
+    public void ShowCollectAllCubesMessage()
+    {
+        StartCoroutine(
+            ShowCollectMessageRoutine()
+        );
     }
 
-    private void WinGame()
+    private IEnumerator ShowCollectMessageRoutine()
+    {
+        warningText.text = "Collect all the cubes";
+
+        yield return new WaitForSeconds(2f);
+
+        warningText.text = string.Empty;
+    }
+    public void WinGame()
     {
         gameEnded = true;
 
