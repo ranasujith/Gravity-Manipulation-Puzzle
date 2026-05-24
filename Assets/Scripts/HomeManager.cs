@@ -22,6 +22,7 @@ public class HomeManager : MonoBehaviour
     public AudioClip iconClickSFX;
     private void Start()
     {
+        AudioManager.Instance.PlayMusic(bgAudio);
         playBtn.onClick.AddListener(() =>
         {
             AudioManager.Instance.PlaySFX(iconClickSFX);

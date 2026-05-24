@@ -20,6 +20,10 @@ public class PlayerController : MonoBehaviour
 
     [Header("HOLOGRAM")]
     public Transform hologram;
+    public Transform hologramPosRight;
+    public Transform hologramPosLeft;   
+    public Transform hologramPosUp;
+    public Transform hologramPosDown;
 
     [Header("REFERENCES")]
     public Animator animator;
@@ -27,6 +31,8 @@ public class PlayerController : MonoBehaviour
     private Rigidbody rb;
 
     private Vector3 gravityDirection = Vector3.down;
+
+    private Vector3 pendingGravityDirection;
 
     private bool isGrounded;
 
@@ -36,7 +42,6 @@ public class PlayerController : MonoBehaviour
     private float airTime;
 
     private bool canChangeGravity = true;
-
 
     private void Start()
     {
@@ -52,18 +57,16 @@ public class PlayerController : MonoBehaviour
             gravityDirection * gravityForce;
     }
 
-
     private void Update()
     {
         HandleInput();
 
         HandleJump();
 
-        HandleGravityChange();
+        HandleGravityPreview();
 
         UpdateAnimator();
     }
-
 
     private void FixedUpdate()
     {
@@ -74,16 +77,19 @@ public class PlayerController : MonoBehaviour
         CheckFallDeath();
     }
 
-
     private void HandleInput()
     {
-        horizontal =
-            Input.GetAxisRaw("Horizontal");
+        float h = 0f;
+        float v = 0f;
 
-        vertical =
-            Input.GetAxisRaw("Vertical");
+        if (Input.GetKey(KeyCode.A)) h -= 1f;
+        if (Input.GetKey(KeyCode.D)) h += 1f;
+        if (Input.GetKey(KeyCode.S)) v -= 1f;
+        if (Input.GetKey(KeyCode.W)) v += 1f;
+
+        horizontal = h;
+        vertical = v;
     }
-
 
     private void MovePlayer()
     {
@@ -132,7 +138,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     private void HandleJump()
     {
         if (Input.GetKeyDown(KeyCode.Space)
@@ -147,41 +152,57 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
-    private void HandleGravityChange()
+    private void HandleGravityPreview()
     {
         if (!canChangeGravity)
             return;
 
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
-            ChangeGravity(Vector3.up);
+            PreviewGravity(Vector3.up);
         }
 
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            ChangeGravity(Vector3.down);
+            PreviewGravity(Vector3.down);
         }
 
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
-            ChangeGravity(Vector3.left);
+            PreviewGravity(Vector3.left);
         }
 
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
-            ChangeGravity(Vector3.right);
+            PreviewGravity(Vector3.right);
+        }
+
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            if (pendingGravityDirection != Vector3.zero)
+            {
+                ChangeGravity(
+                    pendingGravityDirection
+                );
+            }
         }
     }
 
+    private void PreviewGravity(
+        Vector3 direction)
+    {
+        pendingGravityDirection =
+            direction;
 
-    private void ChangeGravity(Vector3 direction)
+        UpdateHologram(direction);
+    }
+
+    private void ChangeGravity(
+        Vector3 direction)
     {
         canChangeGravity = false;
 
         SetGravity(direction);
-
-        UpdateHologram(direction);
 
         Invoke(
             nameof(ResetGravityCooldown),
@@ -194,8 +215,8 @@ public class PlayerController : MonoBehaviour
         canChangeGravity = true;
     }
 
-
-    private void SetGravity(Vector3 direction)
+    private void SetGravity(
+        Vector3 direction)
     {
         gravityDirection =
             direction.normalized;
@@ -232,7 +253,6 @@ public class PlayerController : MonoBehaviour
         isGrounded = false;
     }
 
-
     private IEnumerator SmoothRotate(
         Quaternion targetRotation)
     {
@@ -258,7 +278,6 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     private void CheckGround()
     {
         isGrounded =
@@ -268,7 +287,6 @@ public class PlayerController : MonoBehaviour
                 groundLayer
             );
     }
-
 
     private void UpdateAnimator()
     {
@@ -299,7 +317,6 @@ public class PlayerController : MonoBehaviour
         );
     }
 
-
     private void CheckFallDeath()
     {
         if (!isGrounded)
@@ -307,10 +324,12 @@ public class PlayerController : MonoBehaviour
             airTime +=
                 Time.fixedDeltaTime;
 
-            if (airTime >= 20f)
+            if (airTime >= 10f)
             {
                 Debug.Log("GAME OVER");
+
                 GameManager.Instance.GameOver();
+
                 gameObject.SetActive(false);
             }
         }
@@ -320,76 +339,52 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-
     private void UpdateHologram(
-        Vector3 gravityDir)
+    Vector3 gravityDir)
     {
         if (hologram == null)
             return;
 
-        RaycastHit hit;
+        hologram.gameObject.SetActive(true);
 
-        Vector3 rayOrigin =
-            transform.position;
+        Transform targetPoint = null;
 
-        if (Physics.Raycast(
-            rayOrigin,
-            gravityDir,
-            out hit,
-            15f))
+        if (gravityDir == Vector3.right)
         {
-            hologram.gameObject.SetActive(true);
-
-            hologram.position =
-                hit.point +
-                (-gravityDir * 1f);
-
-            hologram.rotation =
-                Quaternion.LookRotation(
-                    transform.forward,
-                    -gravityDir
-                );
-
-            Animator holoAnimator =
-                hologram.GetComponent<Animator>();
-
-            holoAnimator.SetBool(
-                "IsRunning",
-                animator.GetBool("IsRunning")
-            );
-
-            holoAnimator.SetBool(
-                "IsGrounded",
-                true
-            );
-
-            holoAnimator.SetBool(
-                "IsFalling",
-                false
-            );
+            targetPoint = hologramPosRight;
         }
+        else if (gravityDir == Vector3.left)
+        {
+            targetPoint = hologramPosLeft;
+        }
+        else if (gravityDir == Vector3.up)
+        {
+            targetPoint = hologramPosUp;
+        }
+        else if (gravityDir == Vector3.down)
+        {
+            targetPoint = hologramPosDown;
+        }
+
+        if (targetPoint == null)
+            return;
+
+        hologram.position =
+            targetPoint.position;
+
+        hologram.rotation =
+            targetPoint.rotation;
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(
+        Collider other)
     {
-        if(other.gameObject.CompareTag("Obstacle"))
+        if (other.gameObject.CompareTag("Obstacle"))
         {
             GameManager.Instance.GameOver();
         }
-
-        if(other.gameObject.CompareTag("Finish"))
-        {
-            if(GameManager.Instance.HasCollectedAllCubes())
-            {
-                GameManager.Instance.WinGame();
-            }
-
-            else
-            {
-                GameManager.Instance.ShowCollectAllCubesMessage();
-            }
-        }
     }
+
     private void OnDrawGizmosSelected()
     {
         if (groundCheck == null)

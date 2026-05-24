@@ -8,20 +8,32 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
+    [Header("CONTROLS")]
+    public GameObject controlsPanel;
+    public Button goBtn;
+
     [Header("UI")]
     public TMP_Text timerText;
     public TMP_Text cubeText;
+    public TMP_Text messageText;
+
+    [Header("GAME OVER")]
     public GameObject gameOverPanel;
+    public Button homeButtonGO;
+    public Button restartButtonGO;
+
+    [Header("Win")]
     public GameObject winPanel;
-    public TMP_Text warningText;
+    public Button homeButtonWin;
+    public Button restartButtonWin;
 
     [Header("GAME")]
     public int totalCubes = 5;
 
     private int collectedCubes;
 
-    private float timer = 120f;
-
+    public float timer = 120f;
+    private bool gameStarted;
     private bool gameEnded;
 
     [Header("EXIT")]
@@ -30,6 +42,11 @@ public class GameManager : MonoBehaviour
     public Button cancelButton;
     public Button homeButton;
 
+    [Header("AUDIO CLIPS")]
+    public AudioClip iconClickSFX;
+    public AudioClip winSFX;
+    public AudioClip gameOverSFX;
+
     private void Awake()
     {
         Instance = this;
@@ -37,23 +54,54 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
+        controlsPanel.SetActive(true);
+
+        Time.timeScale = 0f;
+
+        UnlockCursor();
+
+        goBtn.onClick.AddListener(StartGame);
+
+        homeButtonGO.onClick.AddListener(HomeScene);
+        homeButtonWin.onClick.AddListener(HomeScene);
+
+        restartButtonGO.onClick.AddListener(RestartGame);
+        restartButtonWin.onClick.AddListener(RestartGame);
         exitButton.onClick.AddListener(() =>
         {
-            Time.timeScale = 0f;
+            AudioManager.Instance.PlaySFX(iconClickSFX);
             exitpanel.SetActive(true);
 
-        });
-        cancelButton.onClick.AddListener(() => 
-        {
+            UnlockCursor();
             Time.timeScale = 0f;
+
+        });
+        cancelButton.onClick.AddListener(() =>
+        {
+            AudioManager.Instance.PlaySFX(iconClickSFX);
+            Time.timeScale = 1f;
+
             exitpanel.SetActive(false);
+
+            LockCursor();
         });
         homeButton.onClick.AddListener(HomeScene);
+    }
+    private void StartGame()
+    {
+        AudioManager.Instance.PlaySFX(iconClickSFX);
+        controlsPanel.SetActive(false);
+
+        gameStarted = true;
+
+        Time.timeScale = 1f;
+
+        LockCursor();
     }
 
     private void Update()
     {
-        if (gameEnded)
+        if (gameEnded || !gameStarted)
             return;
 
         HandleTimer();
@@ -79,49 +127,46 @@ public class GameManager : MonoBehaviour
 
         int seconds = Mathf.FloorToInt(timer % 60f);
 
-        timerText.text =
-            string.Format("{0:00}:{1:00}",
-            minutes,
-            seconds);
+        timerText.text = string.Format("{0:00}:{1:00}",minutes,seconds);
 
-        cubeText.text =
-            "Cubes: " +
-            collectedCubes +
-            " / " +
-            totalCubes;
+        cubeText.text = "Cubes: " + collectedCubes + " / " + totalCubes;
     }
 
     public void CollectCube()
     {
         collectedCubes++;
 
+        if (collectedCubes >= totalCubes)
+        {
+            ShowMessage("All Cubes are collected!");
+        }
     }
-    public bool HasCollectedAllCubes()
+    public void ShowMessage(string message)
     {
-        return collectedCubes >= totalCubes;
-    }
-    public void ShowCollectAllCubesMessage()
-    {
-        StartCoroutine(
-            ShowCollectMessageRoutine()
-        );
+        StartCoroutine(ShowCollectMessageRoutine(message));
     }
 
-    private IEnumerator ShowCollectMessageRoutine()
+    private IEnumerator ShowCollectMessageRoutine(string message)
     {
-        warningText.text = "Collect all the cubes";
+        gameEnded = true;
 
-        yield return new WaitForSeconds(2f);
+        messageText.text = "All Cubes Collected!";
 
-        warningText.text = string.Empty;
+        yield return new WaitForSeconds(1f);
+
+        messageText.text = string.Empty;
+
+        WinGame();
     }
     public void WinGame()
     {
         gameEnded = true;
-
+        AudioManager.Instance.PlaySFX(winSFX);
         winPanel.SetActive(true);
 
         Time.timeScale = 0f;
+
+        UnlockCursor();
     }
 
     public void GameOver()
@@ -130,15 +175,20 @@ public class GameManager : MonoBehaviour
             return;
 
         gameEnded = true;
-
+        AudioManager.Instance.PlaySFX(gameOverSFX);
         gameOverPanel.SetActive(true);
 
         Time.timeScale = 0f;
+
+        UnlockCursor();
     }
 
     public void RestartGame()
     {
+        AudioManager.Instance.PlaySFX(iconClickSFX);
         Time.timeScale = 1f;
+
+        LockCursor();
 
         SceneManager.LoadScene(
             SceneManager.GetActiveScene().buildIndex
@@ -147,7 +197,30 @@ public class GameManager : MonoBehaviour
 
     public void HomeScene()
     {
+        AudioManager.Instance.PlaySFX(iconClickSFX);
         Time.timeScale = 1f;
+
+        Cursor.lockState =
+            CursorLockMode.None;
+
+        Cursor.visible = true;
+
         SceneManager.LoadScene("HomeScene");
+    }
+
+    private void UnlockCursor()
+    {
+        Cursor.lockState =
+            CursorLockMode.None;
+
+        Cursor.visible = true;
+    }
+
+    public void LockCursor()
+    {
+        Cursor.lockState =
+            CursorLockMode.Locked;
+
+        Cursor.visible = false;
     }
 }
